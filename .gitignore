@@ -1,0 +1,6 @@
+# Build artifacts
+*.o
+*.so
+*.a
+test_normalize
+libnemo_normalize.so
