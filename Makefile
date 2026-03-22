@@ -11,7 +11,7 @@ CFLAGS    ?= -std=c11 -O2 -Wall
 # Conda paths (set by Docker build or override on command line)
 CONDA_PREFIX ?= /opt/conda
 INC          = -I$(CONDA_PREFIX)/include -I.
-LDFLAGS_LIB  = -L$(CONDA_PREFIX)/lib -lfst -lfstfar -lthrax -ldl
+LDFLAGS_LIB  = -L$(CONDA_PREFIX)/lib -lfst -lfstfar -ldl
 RPATH        = -Wl,-rpath,$(CONDA_PREFIX)/lib -Wl,-rpath,.
 
 .PHONY: all clean test
