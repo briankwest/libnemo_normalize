@@ -1,0 +1,4 @@
+libnemo-normalize-data_0.1.0_all.deb libs optional architecture=all
+libnemo-normalize-dbgsym_0.1.0_arm64.ddeb debug optional architecture=arm64 automatic=yes
+libnemo-normalize_0.1.0_arm64.buildinfo libs optional
+libnemo-normalize_0.1.0_arm64.deb libs optional architecture=arm64

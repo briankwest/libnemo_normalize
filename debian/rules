@@ -1,0 +1,27 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+
+# Disable LTO -- OpenFst static symbols cause relocation errors on aarch64
+# when LTO merges translation units. Force -fPIC for shared library.
+export DEB_BUILD_MAINT_OPTIONS = optimize=-lto
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	$(MAKE) libnemo_normalize.so CONDA_PREFIX=/usr CXXFLAGS="-std=c++17 -O2 -Wall -fPIC"
+
+override_dh_auto_install:
+	install -d debian/libnemo-normalize/usr/lib/$(DEB_HOST_MULTIARCH)
+	install -m 0644 libnemo_normalize.so debian/libnemo-normalize/usr/lib/$(DEB_HOST_MULTIARCH)/libnemo_normalize.so
+	install -d debian/libnemo-normalize/usr/include
+	install -m 0644 nemo_normalize.h debian/libnemo-normalize/usr/include/nemo_normalize.h
+	install -d debian/libnemo-normalize-data/usr/share/nemo-normalize/far_export
+	cp -a far_export/* debian/libnemo-normalize-data/usr/share/nemo-normalize/far_export/
+
+override_dh_auto_test:
+	@echo "Skipping tests (requires runtime FAR files)"
+
+override_dh_auto_clean:
+	$(MAKE) clean || true
