@@ -130,7 +130,9 @@ private:
         return not_eos;
     }
     bool parse_char(char exp) {
-        if (ch_ != exp) return false; read(); return true;
+        if (ch_ != exp) return false;
+        read();
+        return true;
     }
     bool parse_chars(const char *exp) {
         for (const char *p = exp; *p; p++) if (!parse_char(*p)) return false;
