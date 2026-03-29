@@ -1,7 +1,0 @@
-libnemo-normalize (0.1.0) stable; urgency=medium
-
-  * Initial Debian packaging of libnemo_normalize.
-  * Shared library with C API for NeMo text normalization via OpenFst.
-  * Includes FAR grammar data for 19 languages (28 grammar sets).
-
- -- Brian West <brian@bkw.org>  Thu, 27 Mar 2026 12:00:00 +0000

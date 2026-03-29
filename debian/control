@@ -2,7 +2,8 @@ Source: libnemo-normalize
 Section: libs
 Priority: optional
 Maintainer: Brian West <brian@bkw.org>
-Build-Depends: debhelper-compat (= 13), build-essential, g++, libfst-dev
+Build-Depends: debhelper-compat (= 13), build-essential, g++, libfst-dev,
+               autoconf, automake, libtool, pkg-config, dh-autoreconf
 Standards-Version: 4.6.2
 
 Package: libnemo-normalize

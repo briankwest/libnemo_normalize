@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf automake libtool pkg-config \
+            libfst-dev build-essential g++
+
+      - name: Autoreconf
+        run: autoreconf -fi
+
+      - name: Configure
+        run: ./configure
+
+      - name: Build
+        run: make
+
+      - name: Verify artifacts
+        run: |
+          test -f .libs/libnemo_normalize.so
+          test -f nemo_normalize.pc
+          echo "Build artifacts verified."
+
+      - name: Test install
+        run: |
+          make install DESTDIR=${{ github.workspace }}/_install
+          test -f ${{ github.workspace }}/_install/usr/local/lib/libnemo_normalize.so
+          test -f ${{ github.workspace }}/_install/usr/local/include/nemo_normalize.h
+          test -f ${{ github.workspace }}/_install/usr/local/lib/pkgconfig/nemo_normalize.pc
+          echo "Install layout verified."

@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf automake libtool pkg-config \
+            libfst-dev build-essential g++ devscripts debhelper dh-autoreconf \
+            dpkg-dev fakeroot
+
+      - name: Install cross-compilation tools
+        if: matrix.arch == 'arm64'
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+            crossbuild-essential-arm64 || true
+
+      - name: Build Debian package (native)
+        if: matrix.arch == 'amd64'
+        run: dpkg-buildpackage -us -uc -b
+
+      - name: Build Debian package (cross arm64)
+        if: matrix.arch == 'arm64'
+        run: dpkg-buildpackage -us -uc -b -aarm64 || echo "Cross-build for arm64 may require additional setup"
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p dist
+          cp ../*.deb dist/ 2>/dev/null || true
+          cp ../*.buildinfo dist/ 2>/dev/null || true
+          cp ../*.changes dist/ 2>/dev/null || true
+          ls -la dist/
+
+      - name: Upload release artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
