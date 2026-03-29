@@ -11,12 +11,15 @@
 
 set -euo pipefail
 
+# Fix git ownership check in CI/Docker containers
+git config --global --add safe.directory "$(pwd)" 2>/dev/null || true
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 CHANGELOG="$PROJECT_DIR/debian/changelog"
 
 PACKAGE="libnemo-normalize"
-MAINTAINER="Brian West <brian@bkw.org>"
+MAINTAINER="Brian West <brian@mcalester.net>"
 DISTRIBUTION="stable"
 
 VERSION="${1:-}"
