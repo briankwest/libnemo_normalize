@@ -6,6 +6,5 @@ includedir=@includedir@
 Name: nemo_normalize
 Description: NeMo text normalization via OpenFst - C API
 Version: @PACKAGE_VERSION@
-Requires: fst
-Libs: -L${libdir} -lnemo_normalize
+Libs: -L${libdir} -lnemo_normalize -lfst -lfstfar
 Cflags: -I${includedir}

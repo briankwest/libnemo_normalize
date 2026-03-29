@@ -1,0 +1,4 @@
+usr/include/nemo_normalize.h
+usr/lib/*/libnemo_normalize.so
+usr/lib/*/libnemo_normalize.a
+usr/lib/*/pkgconfig/nemo_normalize.pc

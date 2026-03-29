@@ -14,6 +14,14 @@ Description: NeMo text normalization via OpenFst - shared library
  grammars. Provides a pure C API for text normalization (TN) and inverse
  text normalization (ITN) without requiring Python at runtime.
 
+Package: libnemo-normalize-dev
+Section: libdevel
+Architecture: any
+Depends: libnemo-normalize (= ${binary:Version}), ${misc:Depends}
+Description: NeMo text normalization via OpenFst - development files
+ Headers, static library, and pkg-config file for developing against
+ libnemo-normalize.
+
 Package: libnemo-normalize-data
 Architecture: all
 Depends: ${misc:Depends}

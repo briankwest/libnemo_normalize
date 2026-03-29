@@ -1,4 +1,4 @@
-libnemo-normalize (1.0.0) stable; urgency=medium
+libnemo-normalize (1.0.0-1) stable; urgency=medium
 
   * Initial Debian packaging of libnemo_normalize.
   * Shared library with C API for NeMo text normalization via OpenFst.
