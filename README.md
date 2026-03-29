@@ -4,6 +4,50 @@ A standalone C library for NeMo text normalization (TN) and inverse text normali
 
 Supports **19 languages** across 28 grammar sets (12 TN + 16 ITN).
 
+## Table of Contents
+
+- [What it does](#what-it-does)
+- [Supported Languages](#supported-languages)
+- [Architecture](#architecture)
+- [Files](#files)
+- [Quick Start (Docker)](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Step 1: Export FAR Grammar Files](#step-1-export-far-grammar-files-one-time)
+  - [Step 2: Build the Library and Test Program](#step-2-build-the-library-and-test-program)
+  - [Step 3: Run the Tests](#step-3-run-the-tests)
+- [Building with Autotools (native)](#building-with-autotools-native)
+  - [Prerequisites](#autotools-prerequisites)
+  - [Bootstrap](#bootstrap)
+  - [Configure](#configure)
+  - [Build](#build)
+  - [Test](#test)
+  - [Install](#install)
+  - [Verify Installation](#verify-installation)
+  - [LTO Compatibility Note](#lto-compatibility-note)
+  - [Cross-Compilation](#cross-compilation)
+- [FAR Grammar Data Files](#far-grammar-data-files)
+- [Debian Packaging](#debian-packaging)
+- [C API Reference](#c-api-reference)
+  - [Header: nemo_normalize.h](#header-nemo_normalizeh)
+  - [Usage Example: English TN](#usage-example-english-text-normalization-tn)
+  - [Usage Example: English ITN](#usage-example-english-inverse-text-normalization-itn)
+  - [Usage Example: Multi-Language](#usage-example-multi-language)
+  - [Compiling Your Program](#compiling-your-program)
+- [FAR Export Details](#far-export-details)
+  - [How It Works](#how-it-works)
+  - [Export Matrix](#export-matrix)
+  - [FAR File Contents](#far-file-contents)
+  - [Selective Export](#selective-export)
+- [Test Cases (English)](#test-cases-english)
+  - [Text Normalization (TN)](#text-normalization-tn----151-cases)
+  - [Inverse Text Normalization (ITN)](#inverse-text-normalization-itn----88-cases)
+- [How It Works](#how-it-works-1)
+  - [Pipeline](#pipeline)
+  - [Key Implementation Details](#key-implementation-details)
+- [Build Details (Docker)](#build-details)
+- [Performance](#performance)
+- [License](#license)
+
 ## What it does
 
 **Text Normalization (TN)** converts written text to spoken form (for TTS):
@@ -100,11 +144,17 @@ The same C API is used for both TN and ITN, and for all languages -- you just lo
 | `nemo_normalize.h` | Public C API header (3 functions) |
 | `nemo_normalize.cpp` | C++ implementation (~680 lines) |
 | `test_normalize.c` | Pure C test program (239 English test cases) |
-| `Makefile` | Build rules for library and test |
+| `configure.ac` | Autoconf input (OpenFst detection, C++17 check) |
+| `Makefile.am` | Automake input (library, test, data install rules) |
+| `nemo_normalize.pc.in` | pkg-config template |
+| `Makefile` | Legacy build rules (Docker workflow) |
 | `Dockerfile` | Docker build environment (OpenFst + Thrax via conda) |
 | `export_far.sh` | One-time script to export FAR files for all languages |
+| `debian/` | Debian packaging files |
 
 ## Quick Start
+
+> This section covers the **Docker-based** workflow for exporting grammars and running tests in an isolated environment. For building natively on your host, see [Building with Autotools (native)](#building-with-autotools-native).
 
 ### Prerequisites
 
@@ -200,6 +250,191 @@ Loading ITN normalizer...
   Throughput:            55.1 normalizations/sec
 ======================================================================
 ```
+
+## Building with Autotools (native)
+
+The project uses a standard autotools build system (`configure.ac` + `Makefile.am`) so you can build and install natively without Docker.
+
+### Autotools Prerequisites
+
+Install the build toolchain and OpenFst development headers:
+
+**Debian / Ubuntu:**
+
+```bash
+sudo apt install autoconf automake libtool pkg-config g++ libfst-dev
+```
+
+**From source / conda:** If your distribution does not package `libfst-dev`, you can install OpenFst from source or via conda (`conda install -c conda-forge thrax=1.3.4`), then point configure at it with `--with-openfst-prefix=DIR`.
+
+A **C++17-capable compiler** is required (GCC 7+ or Clang 5+).
+
+### Bootstrap
+
+Generate the configure script from `configure.ac`:
+
+```bash
+autoreconf -fi
+```
+
+This creates `configure`, `Makefile.in`, and the supporting `build-aux/` and `m4/` scaffolding.
+
+### Configure
+
+```bash
+./configure
+```
+
+Configure auto-detects OpenFst via pkg-config. If OpenFst is installed in a non-standard location (e.g., under a conda prefix), specify it explicitly:
+
+```bash
+./configure --with-openfst-prefix=/opt/conda
+```
+
+If `libfst-dev` is installed system-wide but does not ship a `.pc` file (common on Debian), configure falls back to direct header and library detection automatically.
+
+### Build
+
+```bash
+make
+```
+
+This compiles `libnemo_normalize.so` (via libtool) and the `test_normalize` test binary.
+
+### Test
+
+```bash
+make check
+```
+
+(Or the convenience alias `make test`.)
+
+This runs `test_normalize` against the FAR grammar files in `far_export/`. The FAR files must be present in the source tree for tests to pass -- see [FAR Grammar Data Files](#far-grammar-data-files).
+
+### Install
+
+```bash
+sudo make install
+```
+
+This installs:
+
+| Artifact | Default location |
+|----------|-----------------|
+| `libnemo_normalize.so` | `/usr/local/lib/` |
+| `nemo_normalize.h` | `/usr/local/include/` |
+| `nemo_normalize.pc` | `/usr/local/lib/pkgconfig/` |
+| FAR grammar data | `/usr/local/share/nemo-normalize/far_export/` |
+
+### Verify Installation
+
+After installing, confirm that pkg-config can find the library:
+
+```bash
+pkg-config --cflags --libs nemo_normalize
+```
+
+Expected output (paths may vary):
+
+```
+-I/usr/local/include -L/usr/local/lib -lnemo_normalize
+```
+
+### LTO Compatibility Note
+
+Link-Time Optimization (LTO) must be **disabled** when building against OpenFst. OpenFst's static symbols cause relocation errors on aarch64 (and potentially other architectures) when LTO merges translation units. The Debian packaging rules explicitly set `optimize=-lto` for this reason. If you are building manually with custom `CXXFLAGS`, avoid passing `-flto`.
+
+### Cross-Compilation
+
+Standard autotools cross-compilation works. Specify a `--host` triplet and ensure a cross-toolchain plus cross-built OpenFst libraries are available:
+
+```bash
+./configure --host=aarch64-linux-gnu --with-openfst-prefix=/path/to/aarch64-sysroot/usr
+make
+```
+
+The Debian packaging also supports cross-building via `dpkg-buildpackage -a<arch>` (e.g., `-aarm64`).
+
+## FAR Grammar Data Files
+
+The compiled FAR (Finite-State Archive) files contain all language-specific grammar logic. They are produced once from the Python NeMo-text-processing pipeline (see [FAR Export Details](#far-export-details)) and then used at runtime by the C library.
+
+When installed via `make install`, the FAR files are placed under:
+
+```
+<prefix>/share/nemo-normalize/far_export/
+```
+
+The directory structure mirrors the export layout:
+
+```
+far_export/
+├── en_tn_grammars_cased/
+│   ├── classify/tokenize_and_classify.far
+│   └── verbalize/
+│       ├── verbalize.far
+│       └── post_process.far
+├── en_itn_grammars_cased/
+│   ├── classify/tokenize_and_classify.far
+│   └── verbalize/verbalize.far
+├── de_tn_grammars_cased/
+│   └── ...
+└── ... (28 grammar sets total)
+```
+
+Each grammar set contains:
+
+| File | Purpose |
+|------|---------|
+| `classify/tokenize_and_classify.far` | Tagger FST -- segments and classifies input tokens |
+| `verbalize/verbalize.far` | Verbalizer FST -- converts classified tokens to output form |
+| `verbalize/post_process.far` | Post-processing FST (only present for select languages: en, hi, vi, zh, ja for TN; ja for ITN) |
+
+When using the Debian packages, the `libnemo-normalize-data` package installs the FAR files to `/usr/share/nemo-normalize/far_export/`.
+
+## Debian Packaging
+
+Two Debian packages are produced from this source:
+
+| Package | Contents |
+|---------|----------|
+| `libnemo-normalize` | Shared library (`.so`), header, pkg-config file |
+| `libnemo-normalize-data` | FAR grammar data files (arch-independent) |
+
+The library package depends on the data package at the same source version.
+
+### Building Debian Packages
+
+From the source directory (with `far_export/` present):
+
+```bash
+# Install build dependencies
+sudo apt install debhelper dh-autoreconf autoconf automake libtool \
+                 pkg-config g++ libfst-dev
+
+# Build binary packages (unsigned)
+dpkg-buildpackage -us -uc -b
+```
+
+The resulting `.deb` files are placed in the parent directory:
+
+```
+../libnemo-normalize_0.1.0_<arch>.deb
+../libnemo-normalize-data_0.1.0_all.deb
+```
+
+Install them with:
+
+```bash
+sudo dpkg -i ../libnemo-normalize_0.1.0_*.deb ../libnemo-normalize-data_0.1.0_all.deb
+sudo apt-get -f install   # resolve any missing dependencies
+```
+
+### Package Details
+
+- Tests are skipped during package build (`override_dh_auto_test`) because the FAR files are split into the separate `-data` package and are not available at library test time.
+- LTO is explicitly disabled in `debian/rules` (`DEB_BUILD_MAINT_OPTIONS = optimize=-lto`) for OpenFst compatibility. See [LTO Compatibility Note](#lto-compatibility-note).
+- The `-data` package is `Architecture: all` since the FAR files are platform-independent binary grammars.
 
 ## C API Reference
 
@@ -824,19 +1059,23 @@ The library implements the same pipeline as the Python `Normalizer` class in `no
 
 ## Build Details
 
+> This section documents the Docker-based build. For native autotools builds, see [Building with Autotools (native)](#building-with-autotools-native).
+
 ### Dependencies
 
 | Library | Version | Source |
 |---------|---------|--------|
-| OpenFst | 1.7.2+ | via `conda install thrax` |
-| Thrax | 1.3.4 | `conda install -c conda-forge thrax=1.3.4` |
-| gcc/g++ | 12+ | `apt-get install build-essential` |
+| OpenFst | 1.7.2+ | `apt install libfst-dev` or `conda install thrax` |
+| Thrax | 1.3.4 | `conda install -c conda-forge thrax=1.3.4` (Docker only) |
+| gcc/g++ | 7+ (C++17) | `apt install build-essential` |
+
+For native builds, also install: `autoconf`, `automake`, `libtool`, `pkg-config`.
 
 ### Makefile Targets
 
 ```bash
 make all       # Build libnemo_normalize.so and test_normalize
-make test      # Run the test suite
+make test      # Run the test suite (alias for make check with autotools)
 make clean     # Remove build artifacts
 ```
 
