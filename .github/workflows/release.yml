@@ -20,10 +20,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Extract version from tag
-        id: version
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-
       - name: Set up QEMU for arm64
         uses: docker/setup-qemu-action@v4
         with:
@@ -39,18 +35,11 @@ jobs:
           run: |
             cd /workspace
             apt-get update
-            apt-get install -y \
-              build-essential pkg-config devscripts debhelper fakeroot \
-              autoconf automake libtool \
-              libfst-dev g++
-            scripts/generate-changelog.sh "${{ steps.version.outputs.VERSION }}"
+            apt-get install -y build-essential pkg-config devscripts debhelper fakeroot autoconf automake libtool libfst-dev g++
+            scripts/generate-changelog.sh "${GITHUB_REF_NAME#v}"
             dpkg-buildpackage -us -uc -b
-
-      - name: Collect artifacts
-        run: |
-          mkdir -p dist
-          cp ../*.deb ../*.ddeb dist/ 2>/dev/null || true
-          ls -lh dist/
+            mkdir -p /workspace/dist
+            cp ../*.deb ../*.ddeb /workspace/dist/ 2>/dev/null || true
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v5
@@ -65,10 +54,6 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-
-      - name: Extract version from tag
-        id: version
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
       - name: Set up QEMU for arm64
         uses: docker/setup-qemu-action@v4
@@ -85,18 +70,11 @@ jobs:
           run: |
             cd /workspace
             apt-get update
-            apt-get install -y \
-              build-essential pkg-config devscripts debhelper fakeroot \
-              autoconf automake libtool \
-              libfst-dev g++
-            scripts/generate-changelog.sh "${{ steps.version.outputs.VERSION }}"
+            apt-get install -y build-essential pkg-config devscripts debhelper fakeroot autoconf automake libtool libfst-dev g++
+            scripts/generate-changelog.sh "${GITHUB_REF_NAME#v}"
             dpkg-buildpackage -us -uc -b
-
-      - name: Collect artifacts
-        run: |
-          mkdir -p dist
-          cp ../*.deb ../*.ddeb dist/ 2>/dev/null || true
-          ls -lh dist/
+            mkdir -p /workspace/dist
+            cp ../*.deb ../*.ddeb /workspace/dist/ 2>/dev/null || true
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v5
@@ -127,19 +105,15 @@ jobs:
         run: |
           docker run --rm --platform linux/arm64 \
             -v "${{ github.workspace }}:/workspace" \
-            -w /workspace \
-            debian:trixie bash -c '
+            debian:trixie bash -c "
+              cd /workspace &&
               apt-get update &&
               apt-get install -y build-essential pkg-config devscripts debhelper fakeroot autoconf automake libtool libfst-dev g++ &&
-              scripts/generate-changelog.sh "'"$VERSION"'" &&
-              dpkg-buildpackage -us -uc -b
-            '
-
-      - name: Collect artifacts
-        run: |
-          mkdir -p dist
-          cp ../*.deb ../*.ddeb dist/ 2>/dev/null || true
-          ls -lh dist/
+              scripts/generate-changelog.sh $VERSION &&
+              dpkg-buildpackage -us -uc -b &&
+              mkdir -p /workspace/dist &&
+              cp ../*.deb ../*.ddeb /workspace/dist/ 2>/dev/null || true
+            "
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v5
@@ -162,17 +136,12 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            build-essential pkg-config devscripts debhelper fakeroot lintian \
-            autoconf automake libtool \
-            libfst-dev g++
-
-      - name: Build and test
-        run: |
-          scripts/generate-changelog.sh "${{ steps.version.outputs.VERSION }}"
+          sudo apt-get install -y build-essential pkg-config devscripts debhelper fakeroot lintian autoconf automake libtool libfst-dev g++
 
       - name: Build .deb packages (amd64 Ubuntu 24.04)
-        run: dpkg-buildpackage -us -uc -b
+        run: |
+          scripts/generate-changelog.sh "${{ steps.version.outputs.VERSION }}"
+          dpkg-buildpackage -us -uc -b
 
       - name: Collect artifacts
         run: |
@@ -204,19 +173,12 @@ jobs:
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
       - name: Install build dependencies
-        run: |
-          apt-get update
-          apt-get install -y \
-            build-essential pkg-config devscripts debhelper fakeroot \
-            autoconf automake libtool \
-            libfst-dev g++
-
-      - name: Build and test
-        run: |
-          scripts/generate-changelog.sh "${{ steps.version.outputs.VERSION }}"
+        run: apt-get install -y build-essential pkg-config devscripts debhelper fakeroot autoconf automake libtool libfst-dev g++
 
       - name: Build .deb packages (amd64 Debian 12)
-        run: dpkg-buildpackage -us -uc -b
+        run: |
+          scripts/generate-changelog.sh "${{ steps.version.outputs.VERSION }}"
+          dpkg-buildpackage -us -uc -b
 
       - name: Collect artifacts
         run: |
@@ -248,19 +210,12 @@ jobs:
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
       - name: Install build dependencies
-        run: |
-          apt-get update
-          apt-get install -y \
-            build-essential pkg-config devscripts debhelper fakeroot \
-            autoconf automake libtool \
-            libfst-dev g++
-
-      - name: Build and test
-        run: |
-          scripts/generate-changelog.sh "${{ steps.version.outputs.VERSION }}"
+        run: apt-get install -y build-essential pkg-config devscripts debhelper fakeroot autoconf automake libtool libfst-dev g++
 
       - name: Build .deb packages (amd64 Debian 13)
-        run: dpkg-buildpackage -us -uc -b
+        run: |
+          scripts/generate-changelog.sh "${{ steps.version.outputs.VERSION }}"
+          dpkg-buildpackage -us -uc -b
 
       - name: Collect artifacts
         run: |
@@ -286,64 +241,54 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v5
         with:
-          path: dist
-          merge-multiple: true
+          path: artifacts
+
+      - name: Flatten and rename with distro suffix
+        run: |
+          mkdir -p dist
+          for dir in artifacts/debs-*/; do
+            distro=$(basename "$dir" | sed 's/debs-//')
+            for f in "$dir"*.deb "$dir"*.ddeb; do
+              [ -f "$f" ] || continue
+              base=$(basename "$f")
+              ext="${base##*.}"
+              name="${base%.*}"
+              cp "$f" "dist/${name}~${distro}.${ext}"
+            done
+          done
+          ls -lh dist/
 
       - name: Generate release notes
         run: |
           PREV_TAG=$(git tag --sort=-version:refname | grep '^v' | sed -n '2p')
-          if [ -z "$PREV_TAG" ]; then
-            PREV_TAG=$(git rev-list --max-parents=0 HEAD)
-          fi
-
-          cat > release_notes.md << HEADER
-          ## libnemo-normalize ${GITHUB_REF_NAME}
-
-          Audio normalization library using OpenFst finite-state transducers.
-
-          ### Changes
-          HEADER
-
-          git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD" >> release_notes.md
-
-          cat >> release_notes.md << 'FOOTER'
-
-          ### Installation
-
-          ```bash
-          sudo dpkg -i libnemo-normalize-data_*_all.deb
-          sudo dpkg -i libnemo-normalize_*_<arch>.deb
-          sudo ldconfig
-          ```
-
-          ### Build Matrix
-
-          | Architecture | OS |
-          |--------------|----|
-          | amd64 | Ubuntu 24.04 |
-          | amd64 | Debian 12 (Bookworm) |
-          | amd64 | Debian 13 (Trixie) |
-          | arm64 | Ubuntu 24.04 |
-          | arm64 | Debian 12 (Bookworm) |
-          | arm64 | Debian 13 (Trixie) |
-
-          ### Packages
-          FOOTER
-
-          echo "" >> release_notes.md
-          echo "| File | Size |" >> release_notes.md
-          echo "|------|------|" >> release_notes.md
+          [ -z "$PREV_TAG" ] && PREV_TAG=$(git rev-list --max-parents=0 HEAD)
+          echo "## libnemo-normalize ${GITHUB_REF_NAME}" > notes.md
+          echo "" >> notes.md
+          git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD" >> notes.md
+          echo "" >> notes.md
+          echo "" >> notes.md
+          echo "### Build Matrix" >> notes.md
+          echo "| Architecture | OS |" >> notes.md
+          echo "|-|-|" >> notes.md
+          echo "| amd64 | Ubuntu 24.04 |" >> notes.md
+          echo "| amd64 | Debian 12 (Bookworm) |" >> notes.md
+          echo "| amd64 | Debian 13 (Trixie) |" >> notes.md
+          echo "| arm64 | Ubuntu 24.04 |" >> notes.md
+          echo "| arm64 | Debian 12 (Bookworm) |" >> notes.md
+          echo "| arm64 | Debian 13 (Trixie) |" >> notes.md
+          echo "" >> notes.md
+          echo "### Packages" >> notes.md
+          echo "| File | Size |" >> notes.md
+          echo "|------|------|" >> notes.md
           for f in dist/*.deb dist/*.ddeb; do
             [ -f "$f" ] || continue
-            name=$(basename "$f")
-            size=$(du -h "$f" | cut -f1)
-            echo "| \`${name}\` | ${size} |" >> release_notes.md
+            echo "| \`$(basename $f)\` | $(du -h "$f" | cut -f1) |" >> notes.md
           done
 
-      - name: Create GitHub Release
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          body_path: release_notes.md
+          body_path: notes.md
           files: |
             dist/*.deb
             dist/*.ddeb
