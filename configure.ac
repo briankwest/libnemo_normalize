@@ -1,6 +1,6 @@
 dnl configure.ac for libnemo_normalize
 AC_PREREQ([2.69])
-AC_INIT([libnemo_normalize], [1.0.1], [brian@mcalester.net])
+AC_INIT([libnemo_normalize], [1.0.1], [brian@kerchunk.net])
 AC_CONFIG_SRCDIR([nemo_normalize.cpp])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIRS([m4])

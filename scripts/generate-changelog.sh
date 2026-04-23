@@ -19,7 +19,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 CHANGELOG="$PROJECT_DIR/debian/changelog"
 
 PACKAGE="libnemo-normalize"
-MAINTAINER="Brian West <brian@mcalester.net>"
+MAINTAINER="Brian West <brian@kerchunk.net>"
 DISTRIBUTION="stable"
 
 VERSION="${1:-}"
